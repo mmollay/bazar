@@ -1,4 +1,12 @@
-<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="300" height="200" fill="#f8f9fa"/>
-  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="14px" fill="#9aa0a6">Kein Bild</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#f0f0f0"/>
+  <g fill="#cccccc">
+    <rect x="140" y="100" width="120" height="80" rx="4"/>
+    <circle cx="170" cy="130" r="12"/>
+    <polygon points="140,180 200,140 260,180"/>
+    <polygon points="180,180 220,150 260,180" fill="#e0e0e0"/>
+  </g>
+  <text x="200" y="210" font-family="Arial, sans-serif" font-size="14" fill="#999999" text-anchor="middle">
+    Bild nicht verfügbar
+  </text>
 </svg>
