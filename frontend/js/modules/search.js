@@ -26,6 +26,16 @@ class BazarSearch {
      * Initialize search functionality
      */
     init() {
+        // Initialize debounced functions if BazarUtils is available
+        if (typeof BazarUtils !== 'undefined' && BazarUtils.debounce) {
+            this.debouncedSearch = BazarUtils.debounce(this.performSearch.bind(this), 300);
+            this.debouncedSuggestions = BazarUtils.debounce(this.fetchSuggestions.bind(this), 200);
+        } else {
+            // Fallback without debouncing
+            this.debouncedSearch = this.performSearch.bind(this);
+            this.debouncedSuggestions = this.fetchSuggestions.bind(this);
+        }
+        
         this.loadSearchHistory();
         this.setupSearchUI();
         this.setupLocationSearch();
