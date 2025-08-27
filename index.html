@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bazar">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Bazar - Ihr lokaler Marktplatz für alles">
+    <meta name="keywords" content="marktplatz, kaufen, verkaufen, gebraucht, neu, österreich">
+    <meta name="author" content="Bazar Team">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Bazar - Lokaler Marktplatz">
+    <meta property="og:description" content="Kaufen und verkaufen Sie alles in Ihrer Nähe">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bazar.at">
+    
+    <title>Bazar - Lokaler Marktplatz</title>
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="/bazar/frontend/assets/icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/bazar/frontend/assets/icons/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/bazar/frontend/assets/icons/apple-touch-icon.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/bazar/manifest.json">
+    
+    <!-- Fomantic UI CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/bazar/frontend/assets/css/main.css">
+    <link rel="stylesheet" href="/bazar/frontend/assets/css/mobile.css">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/bazar/frontend/assets/css/main.css" as="style">
+    <link rel="preload" href="/bazar/frontend/js/app.js" as="script">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-overlay">
+        <div class="ui active centered inline loader"></div>
+    </div>
+    
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Zum Hauptinhalt springen</a>
+    
+    <!-- Top Navigation (Desktop) -->
+    <nav id="top-nav" class="ui inverted menu" style="display: none;">
+        <div class="ui container">
+            <a href="/" class="header item">
+                <img class="logo" src="/frontend/assets/images/logo.svg" alt="Bazar">
+                Bazar
+            </a>
+            <div class="right menu">
+                <a href="/login" class="item" id="login-btn">Anmelden</a>
+                <a href="/register" class="item" id="register-btn">Registrieren</a>
+                <div class="ui dropdown item" id="user-menu" style="display: none;">
+                    <span class="text">Mein Profil</span>
+                    <i class="dropdown icon"></i>
+                    <div class="menu">
+                        <a href="/profile" class="item">Profil</a>
+                        <a href="/messages" class="item">Nachrichten</a>
+                        <a href="/articles/my" class="item">Meine Artikel</a>
+                        <div class="divider"></div>
+                        <a href="/logout" class="item">Abmelden</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content Container -->
+    <main id="main-content" class="main-container">
+        <!-- App Content will be injected here -->
+        <div id="app-content">
+            <!-- Homepage Content -->
+            <div class="homepage-container">
+                <!-- Google-style Logo -->
+                <div class="logo-container">
+                    <img src="/frontend/assets/images/logo.svg" alt="Bazar" class="main-logo">
+                </div>
+                
+                <!-- Central Search Bar -->
+                <div class="search-container">
+                    <div class="ui massive fluid icon input search-input">
+                        <input type="text" 
+                               placeholder="Was suchen Sie?" 
+                               id="main-search"
+                               autocomplete="off">
+                        <i class="search icon"></i>
+                    </div>
+                    <div id="search-suggestions" class="search-suggestions" style="display: none;"></div>
+                </div>
+                
+                <!-- Quick Category Cards -->
+                <div class="categories-grid">
+                    <div class="ui stackable four column grid">
+                        <div class="column">
+                            <div class="ui card category-card" data-category="electronics">
+                                <div class="content">
+                                    <i class="mobile alternate icon"></i>
+                                    <div class="header">Elektronik</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="ui card category-card" data-category="clothing">
+                                <div class="content">
+                                    <i class="shirt icon"></i>
+                                    <div class="header">Kleidung</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="ui card category-card" data-category="home">
+                                <div class="content">
+                                    <i class="home icon"></i>
+                                    <div class="header">Haushalt</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="ui card category-card" data-category="vehicles">
+                                <div class="content">
+                                    <i class="car icon"></i>
+                                    <div class="header">Fahrzeuge</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Mobile Bottom Navigation -->
+    <nav id="bottom-nav" class="bottom-navigation">
+        <div class="nav-item active" data-page="home">
+            <i class="home icon"></i>
+            <span>Start</span>
+        </div>
+        <div class="nav-item" data-page="search">
+            <i class="search icon"></i>
+            <span>Suchen</span>
+        </div>
+        <div class="nav-item" data-page="create">
+            <i class="plus circle icon"></i>
+            <span>Erstellen</span>
+        </div>
+        <div class="nav-item" data-page="messages">
+            <i class="comment icon"></i>
+            <span>Nachrichten</span>
+        </div>
+        <div class="nav-item" data-page="profile">
+            <i class="user icon"></i>
+            <span>Profil</span>
+        </div>
+    </nav>
+    
+    <!-- Floating Action Button (Mobile) -->
+    <div id="fab" class="floating-action-button">
+        <i class="plus icon"></i>
+    </div>
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+    
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
+    
+    <!-- Core App Scripts -->
+    <script src="/bazar/frontend/js/utils/helpers.js"></script>
+    <script src="/bazar/frontend/js/modules/router.js"></script>
+    <script src="/bazar/frontend/js/modules/api.js"></script>
+    <script src="/bazar/frontend/js/modules/auth.js"></script>
+    <script src="/bazar/frontend/js/modules/search.js"></script>
+    <script src="/bazar/frontend/js/modules/ui.js"></script>
+    <script src="/bazar/frontend/js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/bazar/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+    
+    <!-- Initialize App -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the app
+            if (typeof App !== 'undefined') {
+                App.init();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - Bazar Marketplace</title>
+    <link rel="stylesheet" href="/frontend/assets/css/main.css">
+    <link rel="stylesheet" href="/frontend/assets/css/search.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/frontend/assets/icons/favicon.ico">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <img src="/frontend/assets/images/logo.svg" alt="Bazar" />
+                </a>
+                
+                <!-- Main search bar -->
+                <div class="search-container main-search-container">
+                    <form class="search-form" id="search-form">
+                        <div class="search-input-wrapper">
+                            <input 
+                                type="search" 
+                                id="main-search" 
+                                placeholder="Search for items..." 
+                                class="search-input"
+                                autocomplete="off"
+                                spellcheck="false"
+                            />
+                            <button type="submit" class="search-btn" aria-label="Search">
+                                <i class="icon search"></i>
+                            </button>
+                        </div>
+                        <div class="search-suggestions" style="display: none;"></div>
+                    </form>
+                </div>
+                
+                <!-- Header actions -->
+                <div class="header-actions">
+                    <button class="btn-icon" id="location-btn" title="Use my location">
+                        <i class="icon location"></i>
+                    </button>
+                    <button class="btn-icon" id="saved-searches-btn" title="Saved searches">
+                        <i class="icon bookmark"></i>
+                    </button>
+                    <a href="/create-article" class="btn btn-primary">
+                        <i class="icon plus"></i>
+                        Sell
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="search-page-layout">
+                
+                <!-- Filters Sidebar -->
+                <aside class="filters-sidebar">
+                    <div class="filters-header">
+                        <h3>Filters</h3>
+                        <button class="btn-text" id="clear-filters">Clear all</button>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="filter-section">
+                        <button class="btn btn-small btn-outline" id="save-search-btn">
+                            <i class="icon bookmark"></i>
+                            Save Search
+                        </button>
+                        <button class="btn btn-small btn-outline" id="advanced-filters-toggle">
+                            Show Advanced Filters
+                        </button>
+                    </div>
+                    
+                    <!-- Category Filter -->
+                    <div class="filter-section">
+                        <h4>Category</h4>
+                        <select id="filter-category" class="search-filter">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Price Range Filter -->
+                    <div class="filter-section">
+                        <h4>Price Range</h4>
+                        <div class="price-inputs">
+                            <input 
+                                type="number" 
+                                id="filter-min-price" 
+                                placeholder="Min €" 
+                                class="search-filter price-input"
+                                min="0"
+                            />
+                            <span class="price-separator">-</span>
+                            <input 
+                                type="number" 
+                                id="filter-max-price" 
+                                placeholder="Max €" 
+                                class="search-filter price-input"
+                                min="0"
+                            />
+                        </div>
+                        <p class="price-range-info" id="price-range-info"></p>
+                    </div>
+                    
+                    <!-- Condition Filter -->
+                    <div class="filter-section">
+                        <h4>Condition</h4>
+                        <div class="condition-checkboxes" id="filter-conditions">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                    
+                    <!-- Location Filter -->
+                    <div class="filter-section">
+                        <h4>Location</h4>
+                        <div class="location-input-wrapper">
+                            <input 
+                                type="text" 
+                                id="location-input" 
+                                placeholder="City or address..."
+                                class="location-input"
+                                list="location-suggestions"
+                            />
+                            <button type="button" id="location-btn-sidebar" class="location-btn-sidebar" title="Use current location">
+                                <i class="icon location"></i>
+                            </button>
+                        </div>
+                        <datalist id="location-suggestions"></datalist>
+                        
+                        <div class="radius-control">
+                            <label for="radius-slider">Within <span id="radius-value">10km</span></label>
+                            <input 
+                                type="range" 
+                                id="radius-slider" 
+                                min="1" 
+                                max="100" 
+                                value="10" 
+                                class="radius-slider"
+                            />
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Filters (Initially Hidden) -->
+                    <div id="advanced-filters-panel" style="display: none;">
+                        
+                        <!-- Featured Filter -->
+                        <div class="filter-section">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="filter-featured" class="search-filter">
+                                <span class="checkmark"></span>
+                                Featured items only
+                            </label>
+                        </div>
+                        
+                        <!-- Date Range -->
+                        <div class="filter-section">
+                            <h4>Date Range</h4>
+                            <select id="filter-date-range" class="search-filter">
+                                <option value="">Any time</option>
+                                <option value="1">Last 24 hours</option>
+                                <option value="7">Last week</option>
+                                <option value="30">Last month</option>
+                                <option value="90">Last 3 months</option>
+                            </select>
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Filter Summary -->
+                    <div class="filter-summary" id="filter-summary" style="display: none;">
+                        <h4>Active Filters</h4>
+                        <div class="active-filters" id="active-filters"></div>
+                    </div>
+                </aside>
+                
+                <!-- Main Content -->
+                <div class="search-content">
+                    
+                    <!-- Search Header -->
+                    <div class="search-header">
+                        <div class="search-info" id="search-info">
+                            <h1>Search Results</h1>
+                            <p class="search-meta" id="search-meta"></p>
+                        </div>
+                        
+                        <div class="search-controls">
+                            <div class="view-toggles">
+                                <button class="view-toggle active" data-view="grid" title="Grid view">
+                                    <i class="icon grid"></i>
+                                </button>
+                                <button class="view-toggle" data-view="list" title="List view">
+                                    <i class="icon list"></i>
+                                </button>
+                            </div>
+                            
+                            <select id="sort-select" class="sort-select">
+                                <option value="relevance">Most Relevant</option>
+                                <option value="newest">Newest First</option>
+                                <option value="price_asc">Price: Low to High</option>
+                                <option value="price_desc">Price: High to Low</option>
+                                <option value="distance">Nearest First</option>
+                                <option value="popular">Most Popular</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Results -->
+                    <div class="search-results" id="search-results">
+                        <!-- Loading placeholder -->
+                        <div class="loading-placeholder" id="search-loading">
+                            <div class="placeholder-card"></div>
+                            <div class="placeholder-card"></div>
+                            <div class="placeholder-card"></div>
+                            <div class="placeholder-card"></div>
+                            <div class="placeholder-card"></div>
+                            <div class="placeholder-card"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- No Results -->
+                    <div class="no-results" id="no-results" style="display: none;">
+                        <div class="no-results-content">
+                            <i class="icon search large"></i>
+                            <h3>No results found</h3>
+                            <p>Try adjusting your search terms or filters</p>
+                            <div class="suggestions" id="search-suggestions-container"></div>
+                            <div class="popular-searches" id="popular-searches-container"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination" id="pagination" style="display: none;">
+                        <button class="btn btn-outline" id="prev-page" disabled>
+                            <i class="icon chevron-left"></i>
+                            Previous
+                        </button>
+                        <div class="page-numbers" id="page-numbers"></div>
+                        <button class="btn btn-outline" id="next-page">
+                            Next
+                            <i class="icon chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Save Search Modal -->
+    <div class="modal" id="save-search-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Save Search</h3>
+                <button class="modal-close" id="cancel-save-search">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="save-search-name">Search Name</label>
+                    <input 
+                        type="text" 
+                        id="save-search-name" 
+                        placeholder="e.g., iPhone 13 in Vienna"
+                        maxlength="100"
+                    />
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="save-search-alerts">
+                        <span class="checkmark"></span>
+                        Email me when new items match this search
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancel-save-search">Cancel</button>
+                <button class="btn btn-primary" id="confirm-save-search">Save Search</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Searches Modal -->
+    <div class="modal" id="saved-searches-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3>Saved Searches</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="saved-searches-list" id="saved-searches-list">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="/frontend/js/utils/helpers.js"></script>
+    <script src="/frontend/js/modules/api.js"></script>
+    <script src="/frontend/js/modules/auth.js"></script>
+    <script src="/frontend/js/modules/ui.js"></script>
+    <script src="/frontend/js/modules/search.js"></script>
+    <script src="/frontend/js/modules/router.js"></script>
+    
+    <script>
+        // Initialize search page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get search parameters from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const query = urlParams.get('q') || '';
+            const category = urlParams.get('category') || '';
+            
+            // Set initial search if provided
+            if (query) {
+                const searchInput = document.getElementById('main-search');
+                if (searchInput) {
+                    searchInput.value = query;
+                }
+                search.currentQuery = query;
+            }
+            
+            if (category) {
+                search.filters.category = category;
+            }
+            
+            // Setup view toggles
+            const viewToggles = document.querySelectorAll('.view-toggle');
+            viewToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    viewToggles.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const view = this.getAttribute('data-view');
+                    const resultsContainer = document.getElementById('search-results');
+                    resultsContainer.className = `search-results ${view}-view`;
+                });
+            });
+            
+            // Setup pagination
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    if (search.currentPage > 1) {
+                        search.goToPage(search.currentPage - 1);
+                    }
+                });
+            }
+            
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    if (search.currentPage < search.totalPages) {
+                        search.goToPage(search.currentPage + 1);
+                    }
+                });
+            }
+            
+            // Setup saved searches modal
+            const savedSearchesBtn = document.getElementById('saved-searches-btn');
+            const savedSearchesModal = document.getElementById('saved-searches-modal');
+            
+            if (savedSearchesBtn) {
+                savedSearchesBtn.addEventListener('click', () => {
+                    savedSearchesModal.classList.add('active');
+                    search.loadSavedSearches();
+                });
+            }
+            
+            // Close modals on overlay click
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay') || e.target.classList.contains('modal-close')) {
+                    const modal = e.target.closest('.modal');
+                    if (modal) {
+                        modal.classList.remove('active');
+                    }
+                }
+            });
+            
+            // Setup mobile filters toggle
+            const filterToggle = document.querySelector('.mobile-filter-toggle');
+            const filtersSidebar = document.querySelector('.filters-sidebar');
+            
+            if (filterToggle && filtersSidebar) {
+                filterToggle.addEventListener('click', () => {
+                    filtersSidebar.classList.toggle('active');
+                });
+            }
+            
+            // Perform initial search if parameters exist
+            if (query || category || Object.keys(search.filters).length > 0) {
+                search.search(query);
+            } else {
+                // Show popular searches or recent items
+                search.loadPopularSearches();
+            }
+        });
+    </script>
+</body>
+</html>

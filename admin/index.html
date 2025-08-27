@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bazar Admin Panel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/admin.css" rel="stylesheet">
+</head>
+<body class="admin-body">
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="login-form">
+            <div class="login-header">
+                <i class="fas fa-shield-alt"></i>
+                <h1>Admin Panel</h1>
+                <p>Secure access to Bazar administration</p>
+            </div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Sign In
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>&copy; 2024 Bazar Marketplace. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2FA Verification Screen -->
+    <div id="twofa-screen" class="login-container" style="display: none;">
+        <div class="login-form">
+            <div class="login-header">
+                <i class="fas fa-mobile-alt"></i>
+                <h1>Two-Factor Authentication</h1>
+                <p>Enter the 6-digit code from your authenticator app</p>
+            </div>
+
+            <form id="twofa-form">
+                <input type="hidden" id="temp-token">
+                <div class="form-group">
+                    <label for="twofa-code">Authentication Code</label>
+                    <input type="text" id="twofa-code" name="code" maxlength="6" pattern="[0-9]{6}" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-check"></i>
+                    Verify
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <a href="#" id="back-to-login">Back to Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Admin Interface -->
+    <div id="admin-interface" class="admin-container" style="display: none;">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-store"></i>
+                <span>Bazar Admin</span>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li><a href="#dashboard" class="menu-item active" data-page="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a></li>
+                
+                <li><a href="#users" class="menu-item" data-page="users">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                </a></li>
+                
+                <li><a href="#articles" class="menu-item" data-page="articles">
+                    <i class="fas fa-box"></i>
+                    <span>Articles</span>
+                </a></li>
+                
+                <li><a href="#moderation" class="menu-item" data-page="moderation">
+                    <i class="fas fa-gavel"></i>
+                    <span>Moderation</span>
+                    <span class="badge" id="moderation-count">0</span>
+                </a></li>
+                
+                <li><a href="#reports" class="menu-item" data-page="reports">
+                    <i class="fas fa-flag"></i>
+                    <span>Reports</span>
+                    <span class="badge" id="reports-count">0</span>
+                </a></li>
+                
+                <li><a href="#analytics" class="menu-item" data-page="analytics">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a></li>
+                
+                <li><a href="#settings" class="menu-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a></li>
+                
+                <li><a href="#logs" class="menu-item" data-page="logs">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Logs</span>
+                </a></li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="admin-user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <span id="admin-name">Admin User</span>
+                        <small id="admin-role">Super Admin</small>
+                    </div>
+                </div>
+                <button id="logout-btn" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="header-left">
+                    <button id="sidebar-toggle" class="sidebar-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+
+                <div class="header-right">
+                    <div class="notifications">
+                        <button class="notification-btn" id="notification-btn">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge" id="notification-count">0</span>
+                        </button>
+                        <div class="notification-dropdown" id="notification-dropdown">
+                            <div class="notification-header">
+                                <h3>Notifications</h3>
+                                <button class="btn-clear" id="mark-all-read">Mark all read</button>
+                            </div>
+                            <div class="notification-list" id="notification-list">
+                                <!-- Notifications will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page-content active">
+                    <div class="dashboard-grid">
+                        <!-- Stats Cards -->
+                        <div class="stats-row">
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <h3 id="total-users">0</h3>
+                                    <p>Total Users</p>
+                                    <span class="stat-change positive" id="users-change">+0%</span>
+                                </div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <h3 id="total-articles">0</h3>
+                                    <p>Total Articles</p>
+                                    <span class="stat-change positive" id="articles-change">+0%</span>
+                                </div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-euro-sign"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <h3 id="total-revenue">€0</h3>
+                                    <p>Revenue (GMV)</p>
+                                    <span class="stat-change positive" id="revenue-change">+0%</span>
+                                </div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <h3 id="pending-reports">0</h3>
+                                    <p>Pending Reports</p>
+                                    <span class="stat-change" id="reports-change">0 new</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts and Tables -->
+                        <div class="dashboard-charts">
+                            <div class="chart-container">
+                                <h3>Weekly Trends</h3>
+                                <canvas id="trends-chart"></canvas>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <h3>Category Distribution</h3>
+                                <canvas id="category-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-tables">
+                            <div class="table-container">
+                                <h3>Recent Activity</h3>
+                                <div class="activity-list" id="recent-activity">
+                                    <!-- Recent activity items -->
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <h3>System Health</h3>
+                                <div class="health-metrics" id="system-health">
+                                    <!-- System health metrics -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Page -->
+                <div id="users-page" class="page-content">
+                    <div class="page-header">
+                        <h2>User Management</h2>
+                        <div class="page-actions">
+                            <input type="text" id="users-search" placeholder="Search users..." class="search-input">
+                            <select id="users-filter" class="filter-select">
+                                <option value="">All Users</option>
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspended</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table" id="users-table">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="users-select-all"></th>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Articles</th>
+                                    <th>Rating</th>
+                                    <th>Joined</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Users will be loaded here -->
+                            </tbody>
+                        </table>
+                        
+                        <div class="table-footer">
+                            <div class="bulk-actions">
+                                <select id="users-bulk-action">
+                                    <option value="">Bulk Actions</option>
+                                    <option value="activate">Activate</option>
+                                    <option value="suspend">Suspend</option>
+                                    <option value="delete">Delete</option>
+                                </select>
+                                <button class="btn-secondary" id="users-apply-bulk">Apply</button>
+                            </div>
+                            
+                            <div class="pagination" id="users-pagination">
+                                <!-- Pagination will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other page containers will be similar -->
+                <div id="articles-page" class="page-content">
+                    <h2>Article Management</h2>
+                    <!-- Article management interface -->
+                </div>
+
+                <div id="moderation-page" class="page-content">
+                    <h2>Content Moderation</h2>
+                    <!-- Moderation queue interface -->
+                </div>
+
+                <div id="reports-page" class="page-content">
+                    <h2>User Reports</h2>
+                    <!-- Reports management interface -->
+                </div>
+
+                <div id="analytics-page" class="page-content">
+                    <h2>Analytics & Reports</h2>
+                    <!-- Analytics dashboard -->
+                </div>
+
+                <div id="settings-page" class="page-content">
+                    <h2>System Settings</h2>
+                    <!-- Settings panels -->
+                </div>
+
+                <div id="logs-page" class="page-content">
+                    <h2>Audit Logs</h2>
+                    <!-- Log viewer -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal" id="generic-modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Modal content -->
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <!-- Modal buttons -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="js/admin-api.js"></script>
+    <script src="js/admin-auth.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+    <script src="js/admin-users.js"></script>
+    <script src="js/admin-ui.js"></script>
+    <script src="js/admin-main.js"></script>
+</body>
+</html>

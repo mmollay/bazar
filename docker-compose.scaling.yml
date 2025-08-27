@@ -1,0 +1,324 @@
+# Docker Compose configuration for scaling Bazar Marketplace
+version: '3.8'
+
+services:
+  # HAProxy Load Balancer
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: bazar_haproxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404" # Stats page
+    volumes:
+      - ./docker/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./docker/haproxy/ssl:/etc/ssl/certs:ro
+      - ./logs/haproxy:/var/log/haproxy
+    networks:
+      - bazar_network
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8404/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Application instances (scalable)
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql-master
+      - DB_NAME=${DB_NAME:-bazar_marketplace}
+      - DB_USER=${DB_USER:-bazar_user}
+      - DB_PASS=${DB_PASS}
+      - REDIS_HOST=redis-cluster
+      - REDIS_PORT=6379
+      - ELASTICSEARCH_HOST=elasticsearch
+    volumes:
+      - uploads:/var/www/html/uploads
+      - logs:/var/www/html/logs
+      - cache:/var/www/html/cache
+    networks:
+      - bazar_network
+    depends_on:
+      - mysql-master
+      - redis-cluster
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 30s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["/usr/local/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # MySQL Master-Slave Setup
+  mysql-master:
+    image: mysql:8.0
+    container_name: bazar_mysql_master
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-bazar_marketplace}
+      MYSQL_USER: ${DB_USER:-bazar_user}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_REPLICATION_USER: replication
+      MYSQL_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+    volumes:
+      - mysql_master_data:/var/lib/mysql
+      - ./docker/mysql/master:/etc/mysql/conf.d
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - bazar_network
+    command: >
+      --server-id=1
+      --log-bin=mysql-bin
+      --binlog-do-db=bazar_marketplace
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  mysql-slave:
+    image: mysql:8.0
+    container_name: bazar_mysql_slave
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-bazar_marketplace}
+      MYSQL_USER: ${DB_USER:-bazar_user}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_MASTER_HOST: mysql-master
+      MYSQL_REPLICATION_USER: replication
+      MYSQL_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+    volumes:
+      - mysql_slave_data:/var/lib/mysql
+      - ./docker/mysql/slave:/etc/mysql/conf.d
+    networks:
+      - bazar_network
+    depends_on:
+      - mysql-master
+    command: >
+      --server-id=2
+      --relay-log=mysql-relay-bin
+      --log-bin=mysql-bin
+      --binlog-do-db=bazar_marketplace
+      --read-only=1
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Redis Cluster
+  redis-cluster:
+    image: redis:7-alpine
+    container_name: bazar_redis_cluster
+    restart: unless-stopped
+    command: >
+      redis-server
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_cluster_data:/data
+    networks:
+      - bazar_network
+    deploy:
+      replicas: 3
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Queue Workers (scalable)
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    restart: unless-stopped
+    command: php backend/cli/batch_processor.php
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql-master
+      - DB_NAME=${DB_NAME:-bazar_marketplace}
+      - DB_USER=${DB_USER:-bazar_user}
+      - DB_PASS=${DB_PASS}
+      - REDIS_HOST=redis-cluster
+      - REDIS_PORT=6379
+      - WORKER_ID=${HOSTNAME}
+    volumes:
+      - uploads:/var/www/html/uploads
+      - logs:/var/www/html/logs
+    networks:
+      - bazar_network
+    depends_on:
+      - mysql-master
+      - redis-cluster
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Elasticsearch Cluster
+  elasticsearch-master:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: bazar_elasticsearch_master
+    restart: unless-stopped
+    environment:
+      - node.name=es-master
+      - cluster.name=bazar-cluster
+      - node.roles=master,data
+      - discovery.seed_hosts=elasticsearch-data1,elasticsearch-data2
+      - cluster.initial_master_nodes=es-master
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_master_data:/usr/share/elasticsearch/data
+    networks:
+      - bazar_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  elasticsearch-data1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: bazar_elasticsearch_data1
+    restart: unless-stopped
+    environment:
+      - node.name=es-data1
+      - cluster.name=bazar-cluster
+      - node.roles=data
+      - discovery.seed_hosts=elasticsearch-master,elasticsearch-data2
+      - cluster.initial_master_nodes=es-master
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data1_data:/usr/share/elasticsearch/data
+    networks:
+      - bazar_network
+    depends_on:
+      - elasticsearch-master
+
+  elasticsearch-data2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: bazar_elasticsearch_data2
+    restart: unless-stopped
+    environment:
+      - node.name=es-data2
+      - cluster.name=bazar-cluster
+      - node.roles=data
+      - discovery.seed_hosts=elasticsearch-master,elasticsearch-data1
+      - cluster.initial_master_nodes=es-master
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data2_data:/usr/share/elasticsearch/data
+    networks:
+      - bazar_network
+    depends_on:
+      - elasticsearch-master
+
+  # Auto-scaling service
+  autoscaler:
+    build:
+      context: docker/autoscaler
+      dockerfile: Dockerfile
+    container_name: bazar_autoscaler
+    restart: unless-stopped
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - PROMETHEUS_URL=http://prometheus:9090
+      - SCALE_UP_THRESHOLD=80
+      - SCALE_DOWN_THRESHOLD=20
+      - MIN_REPLICAS=2
+      - MAX_REPLICAS=10
+      - CHECK_INTERVAL=30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - bazar_network
+    depends_on:
+      - prometheus
+
+networks:
+  bazar_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: bazar-br0
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  mysql_master_data:
+  mysql_slave_data:
+  redis_cluster_data:
+  elasticsearch_master_data:
+  elasticsearch_data1_data:
+  elasticsearch_data2_data:
+  uploads:
+  logs:
+  cache:
+  prometheus_data:
+  grafana_data:

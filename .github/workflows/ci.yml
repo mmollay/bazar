@@ -1,0 +1,667 @@
+name: Bazar Marketplace CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, 'feature/*', 'hotfix/*']
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  PHP_VERSION: '8.1'
+  NODE_VERSION: '18'
+  MYSQL_VERSION: '8.0'
+  REDIS_VERSION: '7.0'
+
+jobs:
+  # Code Quality and Security Checks
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, pdo_mysql, gd, redis
+          coverage: xdebug
+
+      - name: Cache PHP dependencies
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: php-
+
+      - name: Install PHP dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: PHP Code Sniffer
+        run: vendor/bin/phpcs --standard=PSR12 backend/ --report=checkstyle --report-file=phpcs-report.xml
+        continue-on-error: true
+
+      - name: PHP Stan Static Analysis
+        run: |
+          composer require --dev phpstan/phpstan
+          vendor/bin/phpstan analyse backend/ --level=5 --error-format=github
+        continue-on-error: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'bazar-marketplace/package-lock.json'
+
+      - name: Install Node.js dependencies
+        run: |
+          cd bazar-marketplace
+          npm ci
+
+      - name: ESLint JavaScript Analysis
+        run: |
+          cd bazar-marketplace
+          npm run lint
+        continue-on-error: true
+
+      - name: Security Audit - PHP
+        run: composer audit
+        continue-on-error: true
+
+      - name: Security Audit - Node.js
+        run: |
+          cd bazar-marketplace
+          npm audit --audit-level high
+        continue-on-error: true
+
+      - name: Upload code quality reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: code-quality-reports
+          path: |
+            phpcs-report.xml
+            bazar-marketplace/eslint-report.json
+
+  # Backend Tests
+  backend-tests:
+    name: Backend Tests (PHP)
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    services:
+      mysql:
+        image: mysql:${{ env.MYSQL_VERSION }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bazar_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:${{ env.REDIS_VERSION }}
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, pdo_mysql, gd, redis
+          coverage: xdebug
+
+      - name: Cache PHP dependencies
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: php-
+
+      - name: Install PHP dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Copy environment file
+        run: cp .env.testing.example .env.testing
+
+      - name: Setup test database
+        run: |
+          mysql -h 127.0.0.1 -u root -proot -e "CREATE DATABASE IF NOT EXISTS bazar_test;"
+          mysql -h 127.0.0.1 -u root -proot bazar_test < backend/config/database.sql
+          mysql -h 127.0.0.1 -u root -proot bazar_test < backend/config/messaging_schema.sql
+          mysql -h 127.0.0.1 -u root -proot bazar_test < backend/config/search_schema.sql
+          mysql -h 127.0.0.1 -u root -proot bazar_test < backend/config/legal_cms_schema.sql
+
+      - name: Run Unit Tests
+        run: vendor/bin/phpunit tests/Unit --coverage-clover=coverage/clover.xml --log-junit=coverage/junit.xml
+
+      - name: Run Integration Tests
+        run: vendor/bin/phpunit tests/Integration --log-junit=coverage/integration-junit.xml
+
+      - name: Run Feature Tests
+        run: vendor/bin/phpunit tests/Feature --log-junit=coverage/feature-junit.xml
+
+      - name: Run Security Tests
+        run: vendor/bin/phpunit tests/Security --log-junit=coverage/security-junit.xml
+        continue-on-error: true
+
+      - name: Generate coverage report
+        run: vendor/bin/phpunit --coverage-html coverage/html
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: backend-test-results
+          path: |
+            coverage/
+            tests/reports/
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: PHPUnit Tests
+          path: 'coverage/*-junit.xml'
+          reporter: java-junit
+
+  # Frontend Tests
+  frontend-tests:
+    name: Frontend Tests (JavaScript)
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'bazar-marketplace/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd bazar-marketplace
+          npm ci
+
+      - name: Run Jest tests
+        run: |
+          cd bazar-marketplace
+          npm run test -- --coverage --watchAll=false --ci --reporters=default --reporters=jest-junit
+        env:
+          JEST_JUNIT_OUTPUT_DIR: ./coverage
+          JEST_JUNIT_OUTPUT_NAME: jest-junit.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: frontend-test-results
+          path: |
+            bazar-marketplace/coverage/
+            bazar-marketplace/jest-junit.xml
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Jest Tests
+          path: 'bazar-marketplace/coverage/jest-junit.xml'
+          reporter: java-junit
+
+  # End-to-End Tests
+  e2e-tests:
+    name: End-to-End Tests (Cypress)
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    
+    services:
+      mysql:
+        image: mysql:${{ env.MYSQL_VERSION }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bazar_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:${{ env.REDIS_VERSION }}
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, pdo_mysql, gd, redis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'bazar-marketplace/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          composer install --no-progress --prefer-dist --optimize-autoloader
+          cd bazar-marketplace
+          npm ci
+
+      - name: Setup test environment
+        run: |
+          cp .env.testing.example .env.testing
+          mysql -h 127.0.0.1 -u root -proot -e "CREATE DATABASE IF NOT EXISTS bazar_test;"
+          mysql -h 127.0.0.1 -u root -proot bazar_test < backend/config/database.sql
+
+      - name: Start application server
+        run: |
+          cd bazar-marketplace
+          npm run build
+          php -S localhost:8000 -t . &
+          sleep 10
+        env:
+          APP_ENV: testing
+
+      - name: Install Cypress
+        run: |
+          npm install cypress --save-dev
+          npx cypress install
+
+      - name: Run Cypress tests
+        run: npx cypress run --config video=true,screenshotOnRunFailure=true
+        env:
+          CYPRESS_baseUrl: http://localhost:3000
+          CYPRESS_apiUrl: http://localhost:8000/api
+
+      - name: Upload E2E test artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            cypress/videos/
+            cypress/screenshots/
+            cypress/reports/
+
+  # Performance Tests
+  performance-tests:
+    name: Performance Tests (Lighthouse)
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    services:
+      mysql:
+        image: mysql:${{ env.MYSQL_VERSION }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bazar_test
+        ports:
+          - 3306:3306
+
+      redis:
+        image: redis:${{ env.REDIS_VERSION }}
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'bazar-marketplace/package-lock.json'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, pdo_mysql, gd, redis
+
+      - name: Install dependencies
+        run: |
+          composer install --no-progress --prefer-dist --optimize-autoloader
+          cd bazar-marketplace
+          npm ci
+          npm install lighthouse chrome-launcher --save-dev
+
+      - name: Build application
+        run: |
+          cd bazar-marketplace
+          npm run build
+
+      - name: Setup test environment
+        run: |
+          cp .env.testing.example .env.testing
+          mysql -h 127.0.0.1 -u root -proot -e "CREATE DATABASE IF NOT EXISTS bazar_test;"
+          mysql -h 127.0.0.1 -u root -proot bazar_test < backend/config/database.sql
+
+      - name: Start application server
+        run: |
+          php -S localhost:8000 -t . &
+          sleep 10
+        env:
+          APP_ENV: testing
+
+      - name: Run Lighthouse tests
+        run: |
+          node tests/performance/lighthouse-runner.js performance / /articles /login
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-reports
+          path: tests/performance/reports/
+
+  # Security Audit
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, pdo_mysql, gd, redis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'bazar-marketplace/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          composer install --no-progress --prefer-dist --optimize-autoloader
+          cd bazar-marketplace
+          npm ci
+
+      - name: PHP Security Checker
+        run: |
+          composer require --dev roave/security-advisories
+        continue-on-error: true
+
+      - name: Node.js Security Audit
+        run: |
+          cd bazar-marketplace
+          npm audit --audit-level high --json > security-audit.json || true
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'Bazar Marketplace'
+          path: '.'
+          format: 'HTML'
+        continue-on-error: true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bazar-marketplace/security-audit.json
+            reports/
+
+  # Build and Test Docker Images
+  docker-build:
+    name: Docker Build & Test
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build PHP image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          tags: bazar-php:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker containers
+        run: |
+          docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d
+          sleep 30
+          
+          # Health checks
+          docker-compose ps
+          
+          # Test container connectivity
+          curl -f http://localhost:8080/health || exit 1
+          
+          docker-compose down
+
+  # Deployment to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [e2e-tests, performance-tests, security-audit, docker-build]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Add actual deployment steps here
+          # This could involve:
+          # - Building and pushing Docker images
+          # - Updating Kubernetes manifests
+          # - Running database migrations
+          # - Updating configuration
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on staging..."
+          # Add smoke tests for staging environment
+
+  # Production Deployment
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          # Add actual production deployment steps
+
+      - name: Run production smoke tests
+        run: |
+          echo "Running production smoke tests..."
+          # Add production smoke tests
+
+  # Generate Reports
+  generate-reports:
+    name: Generate Test Reports
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, e2e-tests, performance-tests, security-audit]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install report generators
+        run: |
+          npm install -g junit-report-merger
+          npm install -g mochawesome-merge mochawesome-report-generator
+
+      - name: Merge test reports
+        run: |
+          # Merge JUnit reports
+          if [ -d "backend-test-results" ]; then
+            junit-report-merger -o combined-junit.xml "backend-test-results/*.xml"
+          fi
+          
+          if [ -d "frontend-test-results" ]; then
+            junit-report-merger -o combined-frontend-junit.xml "frontend-test-results/*.xml"
+          fi
+
+      - name: Generate coverage badge
+        run: |
+          if [ -f "backend-test-results/coverage/clover.xml" ]; then
+            echo "Coverage badge generation would go here"
+          fi
+
+      - name: Upload combined reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: combined-test-reports
+          path: |
+            combined-*.xml
+            coverage-badge.svg
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Generate test summary comment
+            let comment = '## 🧪 Test Results Summary\n\n';
+            
+            // Add test results if files exist
+            if (fs.existsSync('backend-test-results')) {
+              comment += '✅ Backend tests completed\n';
+            }
+            
+            if (fs.existsSync('frontend-test-results')) {
+              comment += '✅ Frontend tests completed\n';
+            }
+            
+            if (fs.existsSync('e2e-test-results')) {
+              comment += '✅ E2E tests completed\n';
+            }
+            
+            if (fs.existsSync('performance-reports')) {
+              comment += '⚡ Performance tests completed\n';
+            }
+            
+            if (fs.existsSync('security-reports')) {
+              comment += '🔒 Security audit completed\n';
+            }
+            
+            comment += '\n📊 Detailed reports are available in the artifacts section of this workflow run.';
+            
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Notify on failure
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, e2e-tests, performance-tests, security-audit]
+    if: failure()
+
+    steps:
+      - name: Notify failure
+        run: |
+          echo "Tests failed. Notification would be sent here."
+          # Add actual notification logic (Slack, email, etc.)
+
+# Cleanup old workflow runs
+  cleanup:
+    name: Cleanup Old Runs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Delete old workflow runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci.yml',
+              status: 'completed'
+            });
+            
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 30); // Keep last 30 days
+            
+            for (const run of runs.data.workflow_runs) {
+              if (new Date(run.created_at) < cutoff) {
+                await github.rest.actions.deleteWorkflowRun({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: run.id
+                });
+              }
+            }

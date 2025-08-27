@@ -1,0 +1,146 @@
+# Docker Compose override for development environment
+version: '3.8'
+
+services:
+  # Development app with hot reload
+  app:
+    build:
+      target: development
+    environment:
+      - APP_ENV=development
+      - APP_DEBUG=true
+      - XDEBUG_MODE=debug
+      - XDEBUG_CONFIG=client_host=host.docker.internal start_with_request=yes
+      - PHP_IDE_CONFIG=serverName=bazar-docker
+    volumes:
+      # Mount source code for hot reload
+      - ./backend:/var/www/html/backend
+      - ./frontend:/var/www/html/frontend
+      - ./index.html:/var/www/html/index.html
+      # Development logs
+      - ./logs:/var/www/html/logs
+    ports:
+      - "8000:80"
+      - "9003:9003" # Xdebug port
+
+  # Development database with exposed port
+  mysql:
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bazar_marketplace_dev
+      MYSQL_USER: bazar_dev
+      MYSQL_PASSWORD: dev123
+    volumes:
+      # Use local MySQL data for development
+      - ./docker/mysql/dev-data:/var/lib/mysql
+      - ./backend/config/database.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/config/messaging_schema.sql:/docker-entrypoint-initdb.d/02-messaging.sql
+      - ./backend/config/search_schema.sql:/docker-entrypoint-initdb.d/03-search.sql
+
+  # Development Redis with exposed port
+  redis:
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./docker/redis/dev-data:/data
+
+  # Development Elasticsearch with exposed port
+  elasticsearch:
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+    volumes:
+      - ./docker/elasticsearch/dev-data:/usr/share/elasticsearch/data
+
+  # PhpMyAdmin for development
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: bazar_phpmyadmin_dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+    networks:
+      - bazar_network
+    depends_on:
+      - mysql
+
+  # MailHog for development email testing
+  mailhog:
+    image: mailhog/mailhog
+    container_name: bazar_mailhog_dev
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - bazar_network
+
+  # Redis Commander for development
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: bazar_redis_commander_dev
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - bazar_network
+    depends_on:
+      - redis
+
+  # Webpack dev server for frontend
+  webpack-dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.webpack
+    container_name: bazar_webpack_dev
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./frontend:/app/frontend
+      - ./bazar-marketplace/package.json:/app/package.json
+      - ./bazar-marketplace/webpack.config.js:/app/webpack.config.js
+      - node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+    networks:
+      - bazar_network
+    command: npm run dev
+
+  # Remove production services for development
+  nginx:
+    profiles: ["production"]
+  
+  queue-worker:
+    profiles: ["production"]
+    
+  prometheus:
+    profiles: ["monitoring"]
+    
+  grafana:
+    profiles: ["monitoring"]
+    
+  elasticsearch-logs:
+    profiles: ["logging"]
+    
+  logstash:
+    profiles: ["logging"]
+    
+  kibana:
+    profiles: ["logging"]
+    
+  backup:
+    profiles: ["production"]
+
+volumes:
+  node_modules:

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - Bazar Marketplace</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/messages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body>
+    <div id="app" class="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-container">
+                <div class="navbar-brand">
+                    <img src="../assets/images/logo.svg" alt="Bazar" class="logo">
+                </div>
+                
+                <div class="navbar-menu">
+                    <a href="/search" class="navbar-item">Browse</a>
+                    <a href="/create-article" class="navbar-item">Sell</a>
+                    <a href="/messages" class="navbar-item active">Messages</a>
+                    <a href="/favorites" class="navbar-item">Favorites</a>
+                </div>
+                
+                <div class="navbar-end">
+                    <div class="navbar-item has-dropdown">
+                        <div class="navbar-link user-menu-trigger">
+                            <img src="../assets/images/placeholder.jpg" alt="User" class="user-avatar">
+                            <span class="username">Username</span>
+                        </div>
+                        <div class="navbar-dropdown">
+                            <a href="/profile" class="navbar-item">Profile</a>
+                            <a href="/settings" class="navbar-item">Settings</a>
+                            <hr class="navbar-divider">
+                            <a href="#" class="navbar-item" id="logout-btn">Logout</a>
+                        </div>
+                    </div>
+                    
+                    <div class="notification-badge" id="notification-badge">
+                        <span class="badge-count">0</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- Messages Interface -->
+        <main class="main-content">
+            <div class="messages-container">
+                <!-- Sidebar with conversation list -->
+                <div class="messages-sidebar" id="messages-sidebar">
+                    <div class="sidebar-header">
+                        <h2>Messages</h2>
+                        <div class="search-container">
+                            <input type="text" id="conversation-search" placeholder="Search conversations..." class="search-input">
+                        </div>
+                    </div>
+                    
+                    <div class="conversation-list" id="conversation-list">
+                        <!-- Conversation items will be loaded here -->
+                        <div class="loading-placeholder">
+                            <div class="skeleton-item"></div>
+                            <div class="skeleton-item"></div>
+                            <div class="skeleton-item"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat area -->
+                <div class="chat-area" id="chat-area">
+                    <div class="chat-placeholder">
+                        <div class="placeholder-content">
+                            <div class="placeholder-icon">💬</div>
+                            <h3>Select a conversation</h3>
+                            <p>Choose a conversation from the list to start messaging</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat header (hidden by default) -->
+                    <div class="chat-header" id="chat-header" style="display: none;">
+                        <button class="mobile-back-btn" id="mobile-back-btn">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                            </svg>
+                        </button>
+                        
+                        <div class="chat-header-info">
+                            <div class="participant-avatar">
+                                <img src="../assets/images/placeholder.jpg" alt="User">
+                                <div class="online-status"></div>
+                            </div>
+                            <div class="participant-details">
+                                <h3 class="participant-name">Loading...</h3>
+                                <p class="article-title">Article title</p>
+                                <span class="last-seen">Last seen recently</span>
+                            </div>
+                        </div>
+                        
+                        <div class="chat-header-actions">
+                            <button class="action-btn" id="search-messages-btn" title="Search messages">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                </svg>
+                            </button>
+                            <button class="action-btn" id="conversation-menu-btn" title="More options">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Messages container -->
+                    <div class="messages-container" id="messages-container" style="display: none;">
+                        <div class="messages-list" id="messages-list">
+                            <!-- Messages will be loaded here -->
+                        </div>
+                        
+                        <!-- Typing indicator -->
+                        <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                            <div class="typing-bubble">
+                                <span class="typing-text">User is typing</span>
+                                <div class="typing-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Message input area -->
+                    <div class="message-input-area" id="message-input-area" style="display: none;">
+                        <div class="input-container">
+                            <div class="attachment-preview" id="attachment-preview" style="display: none;">
+                                <!-- File previews will be shown here -->
+                            </div>
+                            
+                            <div class="input-row">
+                                <button class="input-btn attachment-btn" id="attachment-btn" title="Attach file">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.31 2.69 6 6 6s6-2.69 6-6V6h-2.5z"/>
+                                    </svg>
+                                </button>
+                                
+                                <button class="input-btn emoji-btn" id="emoji-btn" title="Add emoji">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                    </svg>
+                                </button>
+                                
+                                <div class="message-input-wrapper">
+                                    <textarea 
+                                        id="message-input" 
+                                        placeholder="Type your message..." 
+                                        rows="1"
+                                        maxlength="2000"
+                                    ></textarea>
+                                    <div class="char-count">
+                                        <span id="char-count">0</span>/2000
+                                    </div>
+                                </div>
+                                
+                                <button class="send-btn" id="send-btn" disabled title="Send message">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile conversation list toggle -->
+            <button class="mobile-conversations-btn" id="mobile-conversations-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                </svg>
+            </button>
+        </main>
+        
+        <!-- Modals -->
+        <div id="conversation-menu-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Conversation Options</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <button class="menu-item" id="archive-conversation">
+                        <span class="menu-icon">📁</span>
+                        Archive Conversation
+                    </button>
+                    <button class="menu-item" id="block-user">
+                        <span class="menu-icon">🚫</span>
+                        Block User
+                    </button>
+                    <button class="menu-item danger" id="report-user">
+                        <span class="menu-icon">⚠️</span>
+                        Report User
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="image-preview-modal" class="modal">
+            <div class="modal-overlay">
+                <div class="image-preview-container">
+                    <button class="close-preview">&times;</button>
+                    <img id="preview-image" src="" alt="Image preview">
+                    <div class="image-actions">
+                        <button id="download-image">Download</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- File input (hidden) -->
+        <input type="file" id="file-input" multiple accept="image/*,.pdf,.doc,.docx,.txt,.zip" style="display: none;">
+    </div>
+    
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+    
+    <!-- Scripts -->
+    <script src="../js/utils/helpers.js"></script>
+    <script src="../js/modules/api.js"></script>
+    <script src="../js/modules/auth.js"></script>
+    <script src="../js/modules/websocket.js"></script>
+    <script src="../js/modules/messages.js"></script>
+    <script src="../js/modules/notifications.js"></script>
+    <script src="../js/app.js"></script>
+    <script>
+        // Initialize messages page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.MessagesModule) {
+                window.MessagesModule.init();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+# Bazar-Marktplatz Entwicklungsprojekt
+
+Erstelle einen vollständigen, production-ready Marktplatz (ähnlich willhaben.at) mit folgender Struktur:
+
+## PROJEKT-ÜBERSICHT
+- Mobile-first PWA mit Google-ähnlichem minimalistischem Design
+- PHP 8.2+ Backend mit MySQL 8.0
+- Fomantic-UI Frontend mit Vanilla JavaScript
+- KI-gestützte Artikelerstellung mit Bilderkennung
+- Umfassendes Admin-Panel
+- Vollständige Test-Suite
+
+## ENTWICKLUNGSSCHRITTE
+
+### 1. PROJEKT-SETUP
+Erstelle folgende Ordnerstruktur:
+bazar-marketplace/
+├── backend/
+│   ├── api/
+│   ├── models/
+│   ├── controllers/
+│   ├── services/
+│   ├── middleware/
+│   └── config/
+├── frontend/
+│   ├── assets/
+│   ├── components/
+│   ├── pages/
+│   └── js/
+├── admin/
+├── tests/
+├── uploads/
+├── docker/
+└── docs/
+
+### 2. DATENBANK
+Erstelle MySQL-Datenbank mit folgenden Tabellen:
+- users (mit OAuth, 2FA, Bewertungen)
+- articles (mit Volltext-Suche)
+- categories (hierarchisch)
+- messages (mit Konversationen)
+- article_images (multi-upload)
+- ratings
+- favorites
+- ai_suggestions
+- admin_logs
+- saved_searches
+- cookie_consents
+
+### 3. BACKEND API
+Implementiere RESTful API mit:
+- JWT Authentication (Access + Refresh Tokens)
+- OAuth 2.0 (Google Login)
+- Rate Limiting
+- CORS
+- Comprehensive Error Handling
+- Redis für Sessions/Cache
+
+Endpoints:
+- /api/v1/auth/* (register, login, 2fa, oauth)
+- /api/v1/articles/* (CRUD, search)
+- /api/v1/ai/analyze-image
+- /api/v1/messages/*
+- /api/v1/admin/*
+
+### 4. FRONTEND (Mobile-First)
+Ultra-minimalistisches Design:
+- Maximaler Weißraum (70%)
+- Zentrale Suchleiste wie Google
+- Bottom Navigation (Mobile)
+- FAB für "Artikel erstellen"
+- PWA mit Service Worker
+- Lazy Loading für Bilder
+
+Hauptseiten:
+- Homepage (nur Suche + Kategorien)
+- Such-Ergebnisse (Filter, Infinite Scroll)
+- Artikel-Detail
+- Profil
+- Nachrichten
+
+### 5. KI-INTEGRATION
+Bilderkennung für automatische Artikelerstellung:
+- Objekterkennung
+- Auto-Kategorisierung
+- Titel-Generierung
+- Beschreibungs-Erstellung
+- Preisvorschlag
+- Zustandserkennung
+
+Implementiere mit Google Vision API oder selbst-gehostetem Modell.
+
+### 6. ARTIKEL-SYSTEM
+Schnelle Artikelerstellung (2-3 Klicks):
+- Drag & Drop Bilder
+- KI analysiert sofort
+- Auto-Fill aller Felder
+- One-Page Flow
+
+Features:
+- Bis zu 10 Bilder
+- Automatische Größenanpassung
+- WebP-Konvertierung
+- Auto-Save
+
+### 7. MESSAGING
+Echtzeit-Kommunikation:
+- In-App Messaging
+- Typing Indicator
+- E-Mail-Benachrichtigungen
+- Push Notifications (Service Worker)
+
+### 8. ADMIN-PANEL
+Separates Backend für Admins:
+- Dashboard mit Statistiken
+- User-Verwaltung (sperren, löschen, editieren)
+- Artikel-Moderation
+- System-Einstellungen
+- E-Mail-Templates
+- Audit-Logs
+
+### 9. SUCHE & FILTER
+Mächtige Suchfunktion:
+- MySQL Volltext-Suche
+- Umkreissuche
+- Preisfilter mit Histogram
+- Kategoriefilter
+- Gespeicherte Suchen
+- Autocomplete
+
+### 10. RECHTLICHE SEITEN
+CMS für:
+- AGB
+- Datenschutz
+- Impressum
+- Cookie-Banner (DSGVO)
+- Kontaktformular mit Ticket-System
+
+### 11. TESTING
+Vollständige Test-Coverage:
+- PHPUnit für Backend (Models, Controllers, Services)
+- Jest für Frontend (Components, Services)
+- E2E Tests mit Selenium/Cypress
+- API Tests
+- Performance Tests (Lighthouse > 90)
+
+### 12. OPTIMIERUNGEN
+- Query-Optimierung
+- Redis-Caching
+- CDN-Integration
+- Bundle-Splitting
+- Critical CSS
+- Image Optimization
+- Lazy Loading
+
+## WICHTIGE ANFORDERUNGEN
+
+### Design:
+- Google-inspiriert: schlank, leer, minimalistisch
+- Mobile-first responsive
+- Schnellzugriff: Artikel in max 2-3 Klicks erstellen
+- Floating Action Button für Mobile
+
+### Sicherheit:
+- CSRF Protection
+- XSS Prevention
+- SQL Injection Prevention
+- 2FA für Admins
+- Rate Limiting
+- Captcha
+
+### Performance:
+- Initial Load < 2s
+- Time to Interactive < 3s
+- Lighthouse Score > 90
+- Lazy Loading überall
+
+### Code-Qualität:
+- PSR-12 für PHP
+- ESLint für JavaScript
+- Comprehensive Error Handling
+- Ausführliche Dokumentation
+
+## DEPLOYMENT-READY
+Erstelle:
+- docker-compose.yml
+- .env.example
+- README.md mit Setup-Anleitung
+- Deployment-Skripte
+- Backup-Strategie
+
+Beginne mit der Implementierung und stelle sicher, dass jede Komponente vollständig funktioniert und getestet ist. Das System muss production-ready sein mit exzellenter Performance und User Experience.

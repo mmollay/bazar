@@ -1,0 +1,151 @@
+# MySQL Configuration for Bazar Marketplace Production
+
+[mysqld]
+# Basic Settings
+user = mysql
+port = 3306
+basedir = /usr
+datadir = /var/lib/mysql
+tmpdir = /tmp
+lc-messages-dir = /usr/share/mysql
+skip-external-locking = 1
+skip-name-resolve = 1
+
+# Character Set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+init-connect = 'SET NAMES utf8mb4'
+
+# Security Settings
+local-infile = 0
+secure-file-priv = /var/lib/mysql-files/
+sql-mode = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+
+# Connection Settings
+max-connections = 200
+max-connect-errors = 1000000
+max-allowed-packet = 64M
+interactive-timeout = 3600
+wait-timeout = 600
+connect-timeout = 60
+
+# Buffer Settings
+innodb-buffer-pool-size = 1G
+innodb-buffer-pool-instances = 4
+innodb-log-buffer-size = 16M
+key-buffer-size = 128M
+sort-buffer-size = 2M
+read-buffer-size = 2M
+read-rnd-buffer-size = 8M
+myisam-sort-buffer-size = 64M
+
+# InnoDB Settings
+innodb-file-per-table = 1
+innodb-open-files = 400
+innodb-io-capacity = 400
+innodb-io-capacity-max = 2000
+innodb-flush-method = O_DIRECT
+innodb-log-files-in-group = 2
+innodb-log-file-size = 256M
+innodb-flush-log-at-trx-commit = 2
+innodb-lock-wait-timeout = 120
+innodb-rollback-on-timeout = 1
+innodb-print-all-deadlocks = 1
+innodb-autoinc-lock-mode = 2
+innodb-doublewrite = 1
+innodb-stats-on-metadata = 0
+innodb-file-format = Barracuda
+innodb-checksum-algorithm = crc32
+innodb-purge-threads = 4
+innodb-read-io-threads = 4
+innodb-write-io-threads = 4
+
+# Query Cache (Deprecated in MySQL 8.0, kept for compatibility)
+# query-cache-type = 1
+# query-cache-size = 128M
+# query-cache-limit = 1M
+
+# Table Cache
+table-open-cache = 4000
+table-definition-cache = 2000
+
+# Thread Settings
+thread-cache-size = 50
+thread-stack = 256K
+
+# Temporary Tables
+tmp-table-size = 64M
+max-heap-table-size = 64M
+
+# Binary Logging (for replication and point-in-time recovery)
+log-bin = mysql-bin
+binlog-format = ROW
+expire-logs-days = 7
+max-binlog-size = 100M
+sync-binlog = 1
+
+# Error Logging
+log-error = /var/log/mysql/error.log
+log-warnings = 2
+
+# Slow Query Log
+slow-query-log = 1
+slow-query-log-file = /var/log/mysql/slow.log
+long-query-time = 2
+log-queries-not-using-indexes = 1
+log-slow-admin-statements = 1
+log-slow-slave-statements = 1
+min-examined-row-limit = 1000
+
+# General Log (disable in production for performance)
+general-log = 0
+general-log-file = /var/log/mysql/general.log
+
+# Performance Schema
+performance-schema = 1
+performance-schema-instrument = 'stage/%=ON'
+performance-schema-instrument = 'statement/%=ON'
+performance-schema-instrument = 'wait/%=ON'
+
+# Replication Settings (for master-slave setup)
+server-id = 1
+autoinc-increment = 1
+autoinc-offset = 1
+
+# SSL Settings
+# ssl-ca = /var/lib/mysql/ca.pem
+# ssl-cert = /var/lib/mysql/server-cert.pem
+# ssl-key = /var/lib/mysql/server-key.pem
+
+# Group Replication (if using MySQL Group Replication)
+# plugin-load-add = group_replication.so
+# group_replication_group_name = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+# group_replication_start_on_boot = off
+# group_replication_local_address = "127.0.0.1:33061"
+# group_replication_group_seeds = "127.0.0.1:33061"
+# group_replication_bootstrap_group = off
+
+[mysql]
+default-character-set = utf8mb4
+
+[client]
+default-character-set = utf8mb4
+port = 3306
+socket = /var/run/mysqld/mysqld.sock
+
+[mysqldump]
+quick
+quote-names
+max_allowed_packet = 64M
+single-transaction
+routines
+triggers
+
+[mysqlhotcopy]
+interactive-timeout
+
+[mysqld_safe]
+log-error = /var/log/mysql/error.log
+pid-file = /var/run/mysqld/mysqld.pid
+socket = /var/run/mysqld/mysqld.sock
+nice = 0

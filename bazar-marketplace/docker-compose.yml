@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  web:
+    build: 
+      context: ./docker
+      dockerfile: Dockerfile.php
+    container_name: bazar_web
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+      - ./uploads:/var/www/html/uploads
+    depends_on:
+      - mysql
+      - redis
+      - elasticsearch
+    environment:
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+      - ELASTICSEARCH_HOST=elasticsearch
+    networks:
+      - bazar_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: bazar_mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bazar_marketplace
+      MYSQL_USER: bazar
+      MYSQL_PASSWORD: bazar123
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - bazar_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: bazar_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - bazar_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    container_name: bazar_elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - bazar_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: bazar_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - web
+    networks:
+      - bazar_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: bazar_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+    depends_on:
+      - mysql
+    networks:
+      - bazar_network
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: bazar_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - bazar_network
+
+networks:
+  bazar_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  elasticsearch_data:

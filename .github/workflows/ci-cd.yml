@@ -1,0 +1,442 @@
+name: Bazar Marketplace CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, staging ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: bazar-marketplace
+  NODE_VERSION: '18'
+  PHP_VERSION: '8.2'
+
+jobs:
+  # Security and Code Quality Checks
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security & Code Quality
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, json, redis
+          coverage: xdebug
+          tools: phpstan, psalm, php-cs-fixer
+
+      - name: Install PHP dependencies
+        run: |
+          if [ -f "bazar-marketplace/composer.json" ]; then
+            cd bazar-marketplace && composer install --no-progress --prefer-dist --optimize-autoloader
+          fi
+
+      - name: PHP Code Style Check
+        run: |
+          if [ -f "bazar-marketplace/composer.json" ]; then
+            cd bazar-marketplace && ./vendor/bin/php-cs-fixer fix --dry-run --diff --verbose
+          fi
+        continue-on-error: true
+
+      - name: PHPStan Static Analysis
+        run: |
+          if [ -f "bazar-marketplace/composer.json" ]; then
+            cd bazar-marketplace && ./vendor/bin/phpstan analyse --no-progress
+          fi
+        continue-on-error: true
+
+  # Frontend Tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+    name: Frontend Tests & Build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'bazar-marketplace/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd bazar-marketplace
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd bazar-marketplace
+          npm run lint
+        continue-on-error: true
+
+      - name: Run Jest tests
+        run: |
+          cd bazar-marketplace
+          npm test -- --coverage --watchAll=false
+        continue-on-error: true
+
+      - name: Build frontend
+        run: |
+          cd bazar-marketplace
+          npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: bazar-marketplace/dist/
+          retention-days: 1
+
+  # Backend Tests
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: Backend Tests
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bazar_test
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, json, redis
+          coverage: xdebug
+
+      - name: Install PHP dependencies
+        run: |
+          if [ -f "bazar-marketplace/composer.json" ]; then
+            cd bazar-marketplace && composer install --no-progress --prefer-dist
+          fi
+
+      - name: Setup test database
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: bazar_test
+          DB_USER: root
+          DB_PASS: root
+        run: |
+          mysql -h127.0.0.1 -uroot -proot -e "CREATE DATABASE IF NOT EXISTS bazar_test;"
+          if [ -f "backend/config/database.sql" ]; then
+            mysql -h127.0.0.1 -uroot -proot bazar_test < backend/config/database.sql
+          fi
+
+      - name: Run PHPUnit tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: bazar_test
+          DB_USER: root
+          DB_PASS: root
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: |
+          if [ -d "tests/backend" ]; then
+            ./vendor/bin/phpunit tests/backend --coverage-clover=coverage.xml
+          fi
+        continue-on-error: true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: backend
+          name: backend-coverage
+        continue-on-error: true
+
+  # Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    needs: [frontend-tests, backend-tests]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bazar_test
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download frontend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: bazar-marketplace/dist/
+
+      - name: Build Docker images
+        run: |
+          docker build -t bazar-test:latest -f docker/Dockerfile .
+
+      - name: Run integration tests
+        run: |
+          docker-compose -f docker-compose.yml -f docker-compose.test.yml up -d
+          sleep 30
+          # Run integration tests here
+          docker-compose -f docker-compose.yml -f docker-compose.test.yml down
+        continue-on-error: true
+
+  # Build and Push Docker Images
+  build-and-push:
+    runs-on: ubuntu-latest
+    name: Build & Push Docker Images
+    needs: [security-scan, frontend-tests, backend-tests, integration-tests]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download frontend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: bazar-marketplace/dist/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # Deploy to Staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/staging'
+    environment:
+      name: staging
+      url: https://staging.bazar.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/bazar-staging
+            git pull origin staging
+            docker-compose pull
+            docker-compose up -d --remove-orphans
+            docker system prune -f
+
+      - name: Run database migrations
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/bazar-staging
+            docker-compose exec -T app php backend/cli/migrate.php
+
+      - name: Health check
+        run: |
+          sleep 30
+          curl -f https://staging.bazar.com/health || exit 1
+
+  # Deploy to Production
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://bazar.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create deployment backup
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/bazar-production
+            ./scripts/backup-before-deploy.sh
+
+      - name: Deploy to production (Blue-Green)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/bazar-production
+            ./scripts/blue-green-deploy.sh
+
+      - name: Run database migrations
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/bazar-production
+            docker-compose exec -T app php backend/cli/migrate.php
+
+      - name: Health check and smoke tests
+        run: |
+          sleep 60
+          curl -f https://bazar.com/health || exit 1
+          # Add more smoke tests here
+
+      - name: Notify deployment success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: 'Production deployment successful! :rocket:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/bazar-production
+            ./scripts/rollback.sh
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: 'Production deployment failed! Rollback initiated. :warning:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Performance Tests
+  performance-tests:
+    runs-on: ubuntu-latest
+    name: Performance Tests
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/staging'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            https://staging.bazar.com
+            https://staging.bazar.com/search
+            https://staging.bazar.com/admin
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Run load tests with Artillery
+        run: |
+          npm install -g artillery
+          artillery run tests/load/api-load-test.yml
+        continue-on-error: true

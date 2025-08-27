@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - Bazar</title>
+    <style>
+        body {
+            font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            color: #202124;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        
+        .offline-container {
+            max-width: 400px;
+            padding: 2rem;
+        }
+        
+        .offline-icon {
+            font-size: 4rem;
+            color: #9aa0a6;
+            margin-bottom: 1rem;
+        }
+        
+        .offline-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: #202124;
+        }
+        
+        .offline-message {
+            font-size: 1rem;
+            color: #5f6368;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .retry-button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out;
+        }
+        
+        .retry-button:hover {
+            background-color: #3367d6;
+        }
+        
+        .retry-button:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📱</div>
+        <h1 class="offline-title">Keine Internetverbindung</h1>
+        <p class="offline-message">
+            Es scheint, als wären Sie offline. Überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.
+        </p>
+        <button class="retry-button" onclick="window.location.reload()">
+            Erneut versuchen
+        </button>
+    </div>
+    
+    <script>
+        // Auto-retry when connection is restored
+        window.addEventListener('online', function() {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

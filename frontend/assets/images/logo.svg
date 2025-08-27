@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4285f4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#34a853;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="30" cy="30" r="25" fill="url(#gradient)" opacity="0.1"/>
+  
+  <!-- Shop icon -->
+  <path d="M10 35h40v15H10z" fill="url(#gradient)"/>
+  <path d="M8 25h44l-2 8H10z" fill="url(#gradient)" opacity="0.8"/>
+  <path d="M15 20h30v5H15z" fill="url(#gradient)" opacity="0.6"/>
+  <circle cx="20" cy="40" r="2" fill="#ffffff"/>
+  <circle cx="40" cy="40" r="2" fill="#ffffff"/>
+  
+  <!-- Text -->
+  <text x="70" y="25" font-family="Google Sans, Roboto, sans-serif" font-size="24" font-weight="500" fill="#202124">Bazar</text>
+  <text x="70" y="45" font-family="Google Sans, Roboto, sans-serif" font-size="12" fill="#5f6368">Lokaler Marktplatz</text>
+</svg>

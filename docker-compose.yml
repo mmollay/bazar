@@ -1,0 +1,312 @@
+# Docker Compose for Bazar Marketplace - Production
+version: '3.8'
+
+services:
+  # Application container (PHP-FPM + Nginx)
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    container_name: bazar_app
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - DB_NAME=${DB_NAME:-bazar_marketplace}
+      - DB_USER=${DB_USER:-bazar_user}
+      - DB_PASS=${DB_PASS}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ELASTICSEARCH_HOST=elasticsearch
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASS=${MAIL_PASS}
+      - JWT_SECRET=${JWT_SECRET}
+      - APP_URL=${APP_URL}
+    volumes:
+      - uploads:/var/www/html/uploads
+      - logs:/var/www/html/logs
+      - cache:/var/www/html/cache
+    networks:
+      - bazar_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["/usr/local/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Load balancer (Nginx)
+  nginx:
+    build:
+      context: docker/nginx
+      dockerfile: Dockerfile
+    container_name: bazar_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - uploads:/var/www/html/uploads:ro
+      - logs:/var/log/nginx
+    networks:
+      - bazar_network
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database
+  mysql:
+    image: mysql:8.0
+    container_name: bazar_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-bazar_marketplace}
+      MYSQL_USER: ${DB_USER:-bazar_user}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - mysql_logs:/var/log/mysql
+    networks:
+      - bazar_network
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=512M
+      --innodb-log-file-size=128M
+      --max-connections=200
+      --slow-query-log=1
+      --slow-query-log-file=/var/log/mysql/slow.log
+      --long-query-time=2
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Cache and Session Store
+  redis:
+    image: redis:7-alpine
+    container_name: bazar_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - bazar_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Search Engine
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: bazar_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./docker/elasticsearch/config:/usr/share/elasticsearch/config
+    networks:
+      - bazar_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Queue Worker
+  queue-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    container_name: bazar_queue_worker
+    restart: unless-stopped
+    command: php backend/cli/batch_processor.php
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - DB_NAME=${DB_NAME:-bazar_marketplace}
+      - DB_USER=${DB_USER:-bazar_user}
+      - DB_PASS=${DB_PASS}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - uploads:/var/www/html/uploads
+      - logs:/var/www/html/logs
+    networks:
+      - bazar_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: bazar_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - bazar_network
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: bazar_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - bazar_network
+
+  # Logging - Elasticsearch for logs
+  elasticsearch-logs:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: bazar_elasticsearch_logs
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+    volumes:
+      - elasticsearch_logs_data:/usr/share/elasticsearch/data
+    networks:
+      - bazar_network
+
+  # Logging - Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: bazar_logstash
+    restart: unless-stopped
+    volumes:
+      - ./docker/logstash/config:/usr/share/logstash/config
+      - ./docker/logstash/pipeline:/usr/share/logstash/pipeline
+      - logs:/var/log/app:ro
+    networks:
+      - bazar_network
+    depends_on:
+      - elasticsearch-logs
+
+  # Logging - Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: bazar_kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch-logs:9200
+    networks:
+      - bazar_network
+    depends_on:
+      - elasticsearch-logs
+
+  # Backup Service
+  backup:
+    build:
+      context: docker/backup
+      dockerfile: Dockerfile
+    container_name: bazar_backup
+    restart: unless-stopped
+    environment:
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
+      - DB_HOST=mysql
+      - DB_NAME=${DB_NAME:-bazar_marketplace}
+      - DB_USER=${DB_USER:-bazar_user}
+      - DB_PASS=${DB_PASS}
+      - S3_BUCKET=${S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
+    volumes:
+      - uploads:/var/www/html/uploads:ro
+      - mysql_data:/var/lib/mysql:ro
+      - ./docker/backup/scripts:/backup/scripts
+      - backup_temp:/tmp/backup
+    networks:
+      - bazar_network
+    depends_on:
+      - mysql
+
+networks:
+  bazar_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  mysql_data:
+  mysql_logs:
+  redis_data:
+  elasticsearch_data:
+  elasticsearch_logs_data:
+  uploads:
+  logs:
+  cache:
+  prometheus_data:
+  grafana_data:
+  backup_temp:
