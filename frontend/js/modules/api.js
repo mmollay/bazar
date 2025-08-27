@@ -5,7 +5,7 @@
  */
 class BazarAPI {
     constructor() {
-        this.baseURL = '/api/v1';
+        this.baseURL = '/bazar/backend/api/v1';
         this.timeout = 10000;
         this.defaultHeaders = {
             'Content-Type': 'application/json',
