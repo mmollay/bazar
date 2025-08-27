@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Home page
             router.route('/', this.renderHomePage.bind(this));
+            router.route('/bazar/', this.renderHomePage.bind(this));
             router.route('/home', this.renderHomePage.bind(this));
             
             // Search
