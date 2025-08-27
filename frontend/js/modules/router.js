@@ -30,9 +30,15 @@ class BazarRouter {
         
         // Handle link clicks
         document.addEventListener('click', this.handleLinkClick);
-        
+    }
+    
+    /**
+     * Start the router and navigate to current URL
+     */
+    start() {
         // Handle initial page load
         this.navigate(window.location.pathname + window.location.search, false);
+        return this;
     }
     
     /**
