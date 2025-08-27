@@ -478,8 +478,14 @@ class BazarAPI {
      * Get all categories
      * @returns {Promise} Categories list
      */
-    getCategories() {
-        return this.get('/categories');
+    async getCategories() {
+        try {
+            const response = await this.get('/categories');
+            return response.data || [];
+        } catch (error) {
+            console.warn('Failed to load categories:', error);
+            return [];
+        }
     }
     
     /**
