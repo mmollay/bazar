@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bazar - Login & Registrierung</title>
+    
+    <!-- Google Client API -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 450px;
+            padding: 3rem 2rem;
+            position: relative;
+            animation: slideUp 0.5s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .logo h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 4px;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #6c757d;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active {
+            background: white;
+            color: #764ba2;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 0.875rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 1rem;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 40%;
+            height: 1px;
+            background: #e9ecef;
+        }
+        
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 0;
+            width: 40%;
+            height: 1px;
+            background: #e9ecef;
+        }
+        
+        .google-signin-container {
+            margin: 1.5rem 0;
+        }
+        
+        .google-btn {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .google-btn:hover {
+            background: #f8f9fa;
+            border-color: #4285f4;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(66, 133, 244, 0.2);
+        }
+        
+        .google-btn img {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .form-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .form-footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <h1><i class="fas fa-shopping-bag"></i> Bazar</h1>
+        </div>
+        
+        <div class="auth-tabs">
+            <button class="tab-btn active" onclick="switchTab('login')">Anmelden</button>
+            <button class="tab-btn" onclick="switchTab('register')">Registrieren</button>
+        </div>
+        
+        <div id="success-message" class="success-message"></div>
+        <div id="error-message" class="error-message"></div>
+        <div id="loading" class="loading"><div class="spinner"></div></div>
+        
+        <!-- Login Form -->
+        <div id="login-tab" class="tab-content active">
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">E-Mail Adresse</label>
+                    <input type="email" class="form-input" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Passwort</label>
+                    <input type="password" class="form-input" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Anmelden</button>
+            </form>
+        </div>
+        
+        <!-- Register Form -->
+        <div id="register-tab" class="tab-content">
+            <form id="register-form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label class="form-label">Vollständiger Name</label>
+                    <input type="text" class="form-input" id="register-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">E-Mail Adresse</label>
+                    <input type="email" class="form-input" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Passwort</label>
+                    <input type="password" class="form-input" id="register-password" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary">Registrieren</button>
+            </form>
+        </div>
+        
+        <div class="divider">oder</div>
+        
+        <!-- Google Sign In -->
+        <div class="google-signin-container">
+            <button class="google-btn" onclick="handleGoogleSignIn()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                    <path fill="none" d="M0 0h48v48H0z"/>
+                </svg>
+                Mit Google anmelden
+            </button>
+        </div>
+        
+        <!-- Google One Tap Container (invisible) -->
+        <div id="g_id_onload"
+             data-client_id="794380625119-03ocmimq1o84edhuvvltpd6p97earr9a.apps.googleusercontent.com"
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+        
+        <div class="form-footer">
+            <p>Mit der Anmeldung akzeptierst du unsere <a href="#">AGB</a> und <a href="#">Datenschutzbestimmungen</a></p>
+        </div>
+    </div>
+    
+    <script>
+        // Tab switching
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tab + '-tab').classList.add('active');
+            
+            // Clear messages
+            hideMessages();
+        }
+        
+        // Show/hide messages
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(hideMessages, 5000);
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(hideMessages, 5000);
+        }
+        
+        function hideMessages() {
+            document.getElementById('success-message').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // Handle normal login
+        async function handleLogin(event) {
+            event.preventDefault();
+            hideMessages();
+            showLoading();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch('/bazar/backend/api/auth/login.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showSuccess('Erfolgreich angemeldet! Weiterleitung...');
+                    setTimeout(() => {
+                        window.location.href = '/bazar/';
+                    }, 1500);
+                } else {
+                    showError(data.message || 'Anmeldung fehlgeschlagen');
+                }
+            } catch (error) {
+                showError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Handle registration
+        async function handleRegister(event) {
+            event.preventDefault();
+            hideMessages();
+            showLoading();
+            
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            try {
+                const response = await fetch('/bazar/backend/api/auth/register.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showSuccess('Erfolgreich registriert! Weiterleitung...');
+                    setTimeout(() => {
+                        window.location.href = '/bazar/';
+                    }, 1500);
+                } else {
+                    showError(data.message || 'Registrierung fehlgeschlagen');
+                }
+            } catch (error) {
+                showError('Netzwerkfehler. Bitte versuchen Sie es später erneut.');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Google Sign In with popup
+        function handleGoogleSignIn() {
+            // Open Google OAuth popup
+            const clientId = '794380625119-03ocmimq1o84edhuvvltpd6p97earr9a.apps.googleusercontent.com';
+            const redirectUri = encodeURIComponent('http://localhost/bazar/backend/api/auth/google-callback.php');
+            const scope = encodeURIComponent('email profile');
+            const responseType = 'code';
+            
+            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${clientId}&` +
+                `redirect_uri=${redirectUri}&` +
+                `response_type=${responseType}&` +
+                `scope=${scope}&` +
+                `access_type=online&` +
+                `prompt=select_account`;
+            
+            // Calculate popup position
+            const width = 500;
+            const height = 600;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2;
+            
+            // Open popup
+            const popup = window.open(
+                googleAuthUrl,
+                'Google Login',
+                `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+            );
+            
+            // Check if popup was closed
+            const checkPopup = setInterval(() => {
+                if (!popup || popup.closed) {
+                    clearInterval(checkPopup);
+                    // Check if user is logged in
+                    checkAuthStatus();
+                }
+            }, 1000);
+        }
+        
+        // Handle credential response from Google One Tap
+        function handleCredentialResponse(response) {
+            showLoading();
+            
+            // Send the ID token to your backend
+            fetch('/bazar/backend/api/auth/google-signin.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    credential: response.credential
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showSuccess('Erfolgreich mit Google angemeldet!');
+                    setTimeout(() => {
+                        window.location.href = '/bazar/';
+                    }, 1500);
+                } else {
+                    showError(data.message || 'Google Anmeldung fehlgeschlagen');
+                }
+            })
+            .catch(error => {
+                showError('Fehler bei der Google Anmeldung');
+            })
+            .finally(() => {
+                hideLoading();
+            });
+        }
+        
+        // Check auth status (called when popup closes)
+        async function checkAuthStatus() {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                window.location.href = '/bazar/';
+            }
+        }
+        
+        // Initialize Google Sign In
+        window.onload = function() {
+            // Initialize Google Sign In with the new library
+            google.accounts.id.initialize({
+                client_id: '794380625119-03ocmimq1o84edhuvvltpd6p97earr9a.apps.googleusercontent.com',
+                callback: handleCredentialResponse
+            });
+        }
+        
+        // Listen for messages from popup
+        window.addEventListener('message', function(event) {
+            if (event.origin !== 'http://localhost') return;
+            
+            if (event.data.type === 'google-auth-success') {
+                localStorage.setItem('authToken', event.data.token);
+                localStorage.setItem('user', JSON.stringify(event.data.user));
+                showSuccess('Erfolgreich mit Google angemeldet!');
+                setTimeout(() => {
+                    window.location.href = '/bazar/';
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+</html>
