@@ -36,6 +36,25 @@ class BazarAuth {
     }
     
     /**
+     * Check authentication status
+     * @returns {Promise} Resolves when auth check is complete
+     */
+    async checkAuthStatus() {
+        const token = this.getToken();
+        if (token) {
+            try {
+                await this.loadUserProfile();
+                return true;
+            } catch (error) {
+                console.warn('Auth check failed:', error);
+                this.logout();
+                return false;
+            }
+        }
+        return false;
+    }
+    
+    /**
      * Get authentication token
      * @returns {string|null} Auth token
      */
