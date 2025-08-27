@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bazar Test</title>
+</head>
+<body>
+    <h1>Bazar Module Test</h1>
+    <div id="test-output"></div>
+    
+    <!-- Core App Scripts -->
+    <script src="/bazar/frontend/js/utils/helpers.js?v=3"></script>
+    <script src="/bazar/frontend/js/modules/router.js?v=3"></script>
+    <script src="/bazar/frontend/js/modules/api.js?v=3"></script>
+    <script src="/bazar/frontend/js/modules/auth.js?v=3"></script>
+    <script src="/bazar/frontend/js/modules/search.js?v=3"></script>
+    <script src="/bazar/frontend/js/modules/ui.js?v=3"></script>
+    
+    <script>
+        // Test if modules are loaded
+        const output = document.getElementById('test-output');
+        let html = '<h2>Module Status:</h2><ul>';
+        
+        // Check each module
+        const modules = [
+            { name: 'BazarUtils', obj: typeof BazarUtils },
+            { name: 'BazarRouter', obj: typeof BazarRouter },
+            { name: 'BazarAPI', obj: typeof BazarAPI },
+            { name: 'BazarAuth', obj: typeof BazarAuth },
+            { name: 'BazarSearch', obj: typeof BazarSearch },
+            { name: 'BazarUI', obj: typeof BazarUI }
+        ];
+        
+        modules.forEach(module => {
+            const status = module.obj !== 'undefined' ? '✅' : '❌';
+            html += `<li>${status} ${module.name}: ${module.obj}</li>`;
+        });
+        
+        html += '</ul>';
+        
+        // Test instances
+        if (typeof BazarAuth !== 'undefined') {
+            const auth = new BazarAuth();
+            html += '<h3>Auth Methods:</h3><ul>';
+            html += `<li>checkAuthStatus: ${typeof auth.checkAuthStatus}</li>`;
+            html += `<li>getToken: ${typeof auth.getToken}</li>`;
+            html += `<li>isAuthenticated: ${typeof auth.isAuthenticated}</li>`;
+            html += '</ul>';
+        }
+        
+        if (typeof BazarUI !== 'undefined') {
+            const ui = new BazarUI();
+            html += '<h3>UI Methods:</h3><ul>';
+            html += `<li>showError: ${typeof ui.showError}</li>`;
+            html += `<li>showSuccess: ${typeof ui.showSuccess}</li>`;
+            html += `<li>showModal: ${typeof ui.showModal}</li>`;
+            html += '</ul>';
+        }
+        
+        if (typeof BazarRouter !== 'undefined') {
+            const router = new BazarRouter();
+            html += '<h3>Router Methods:</h3><ul>';
+            html += `<li>start: ${typeof router.start}</li>`;
+            html += `<li>route: ${typeof router.route}</li>`;
+            html += `<li>navigate: ${typeof router.navigate}</li>`;
+            html += '</ul>';
+        }
+        
+        output.innerHTML = html;
+    </script>
+</body>
+</html>
