@@ -27,6 +27,58 @@ class BazarUI {
     }
     
     /**
+     * Show error message
+     * @param {string} message - Error message to display
+     */
+    showError(message) {
+        if (typeof BazarUtils !== 'undefined' && BazarUtils.showToast) {
+            BazarUtils.showToast(message, 'error');
+        } else {
+            // Fallback to console
+            console.error(message);
+            // Try to show in UI
+            const errorContainer = document.getElementById('error-message');
+            if (errorContainer) {
+                errorContainer.textContent = message;
+                errorContainer.style.display = 'block';
+            }
+        }
+    }
+    
+    /**
+     * Show success message
+     * @param {string} message - Success message to display
+     */
+    showSuccess(message) {
+        if (typeof BazarUtils !== 'undefined' && BazarUtils.showToast) {
+            BazarUtils.showToast(message, 'success');
+        } else {
+            console.log(message);
+        }
+    }
+    
+    /**
+     * Show modal dialog
+     * @param {string} content - Modal content
+     * @param {string} type - Modal type (info, warning, error)
+     */
+    showModal(content, type = 'info') {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content ${type}">
+                <div class="modal-body">${content}</div>
+                <button class="modal-close">OK</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+    }
+    
+    /**
      * Setup global event listeners
      */
     setupGlobalListeners() {
