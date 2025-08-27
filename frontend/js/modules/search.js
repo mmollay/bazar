@@ -14,9 +14,9 @@ class BazarSearch {
         this.searchCache = new Map();
         this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
         
-        // Debounced search function
-        this.debouncedSearch = BazarUtils.debounce(this.performSearch.bind(this), 300);
-        this.debouncedSuggestions = BazarUtils.debounce(this.fetchSuggestions.bind(this), 200);
+        // These will be initialized after utils are loaded
+        this.debouncedSearch = null;
+        this.debouncedSuggestions = null;
         
         // Initialize search
         this.init();
