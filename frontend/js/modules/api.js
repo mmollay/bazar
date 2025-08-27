@@ -475,6 +475,34 @@ class BazarAPI {
     // === CATEGORY ENDPOINTS ===
     
     /**
+     * Search articles
+     * @param {Object} params - Search parameters
+     * @returns {Promise} Search results
+     */
+    async search(params) {
+        try {
+            return await this.get('/search', params);
+        } catch (error) {
+            console.warn('Search failed:', error);
+            return { data: [], total: 0 };
+        }
+    }
+    
+    /**
+     * Get search suggestions
+     * @param {string} query - Search query
+     * @returns {Promise} Search suggestions
+     */
+    async getSearchSuggestions(query) {
+        try {
+            return await this.get('/search/suggestions', { q: query });
+        } catch (error) {
+            console.warn('Failed to get suggestions:', error);
+            return { suggestions: [] };
+        }
+    }
+    
+    /**
      * Get all categories
      * @returns {Promise} Categories list
      */
