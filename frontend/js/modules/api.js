@@ -452,8 +452,14 @@ class BazarAPI {
      * Get featured articles
      * @returns {Promise} Featured articles
      */
-    getFeaturedArticles() {
-        return this.get('/articles/featured');
+    async getFeaturedArticles() {
+        try {
+            const response = await this.get('/articles/featured');
+            return response.data || [];
+        } catch (error) {
+            console.warn('Failed to load featured articles:', error);
+            return [];
+        }
     }
     
     /**
